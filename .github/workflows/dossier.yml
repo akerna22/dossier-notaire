@@ -1,0 +1,26 @@
+name: Générer un dossier parcellaire
+
+on:
+  workflow_dispatch:
+    inputs:
+      adresse:
+        description: "Adresse complète (ex : 12 rue des Érables 22300 Lannion)"
+        required: true
+
+jobs:
+  dossier:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: python generate.py
+        env:
+          ADRESSE: ${{ github.event.inputs.adresse }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dossier-parcellaire
+          path: out/*.pdf
+          retention-days: 7
