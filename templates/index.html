@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dossier parcellaire</title>
+<style>
+body{font-family:system-ui,Segoe UI,Arial,sans-serif;background:#f3f5f9;margin:0;color:#1b2a3d}
+main{max-width:680px;margin:12vh auto;padding:0 20px}
+h1{color:#1f3a5f;margin-bottom:4px}p.s{color:#5b6b80;margin-top:0}
+.box{position:relative}input{width:100%;box-sizing:border-box;padding:14px 16px;font-size:17px;border:1px solid #b8c2d0;border-radius:10px}
+#list{position:absolute;left:0;right:0;background:#fff;border:1px solid #b8c2d0;border-radius:10px;margin-top:4px;display:none;z-index:5;overflow:hidden}
+#list div{padding:10px 16px;cursor:pointer}#list div:hover{background:#eaf0f8}#list small{color:#6b7a8f}
+button{margin-top:14px;padding:12px 22px;font-size:16px;background:#1f3a5f;color:#fff;border:0;border-radius:10px;cursor:pointer}
+button:disabled{opacity:.5;cursor:wait}#msg{margin-top:16px;min-height:24px}.err{color:#b42318}
+</style></head><body><main>
+<h1>Dossier parcellaire et urbanistique</h1>
+<p class="s">Saisissez une adresse en France : le PDF agrège cadastre, PLU, servitudes, risques, environnement et marché (DVF).</p>
+<div class="box"><input id="q" placeholder="12 rue des Érables, 22300 Lannion" autocomplete="off"><div id="list"></div></div>
+<button id="go">Générer le dossier PDF</button><div id="msg"></div>
+<script>
+const q=document.getElementById('q'),list=document.getElementById('list'),go=document.getElementById('go'),msg=document.getElementById('msg');
+let chosen=null,t=null;
+q.addEventListener('input',()=>{chosen=null;clearTimeout(t);t=setTimeout(async()=>{
+  if(q.value.trim().length<3){list.style.display='none';return}
+  try{const r=await (await fetch('/api/suggest?q='+encodeURIComponent(q.value))).json();
+    if(!Array.isArray(r)||!r.length){list.style.display='none';return}
+    list.innerHTML='';r.forEach(p=>{const d=document.createElement('div');d.innerHTML=p.label+' <small>'+(p.context||'')+'</small>';
+      d.onclick=()=>{chosen=p;q.value=p.label;list.style.display='none'};list.appendChild(d)});list.style.display='block'}catch(e){}
+},250)});
+go.onclick=async()=>{
+  if(q.value.trim().length<3){return}
+  go.disabled=true;msg.className='';msg.textContent='Interrogation des sources publiques et génération du PDF (20 à 60 s)…';
+  try{
+    const r=await fetch('/api/dossier',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(chosen||{q:q.value})});
+    if(!r.ok){const j=await r.json().catch(()=>({}));throw new Error(j.error||('Erreur '+r.status))}
+    const url=URL.createObjectURL(await r.blob());const a=document.createElement('a');a.href=url;a.download='dossier_parcellaire.pdf';a.click();
+    msg.innerHTML='PDF généré. <a href="'+url+'" target="_blank">Ouvrir le PDF</a>';
+  }catch(e){msg.className='err';msg.textContent=e.message}
+  go.disabled=false};
+</script></main></body></html>
